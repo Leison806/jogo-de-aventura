@@ -1,0 +1,225 @@
+import random
+import time
+
+# --- 1. DEFINIÇÕES GLOBAIS ---
+PONTOS_DE_ATRIBUTO = 10
+MAX_PONTOS_NEVOA = 20
+
+# --- 2. CLASSES E OBJETOS ---
+
+class Personagem:
+    """Representa o personagem do jogador."""
+    def __init__(self, nome, arquetipo, forca, destreza, mente):
+        self.nome = nome
+        self.arquetipo = arquetipo
+        self.forca = forca
+        self.destreza = destreza
+        self.mente = mente
+        self.pontos_nevoa = 0
+        self.vida = 10 + (forca * 5) # Vida inicial baseada em Força
+
+    def mostrar_status(self):
+        """Exibe o estado atual do personagem."""
+        print("-" * 30)
+        print(f"| NOME: {self.nome}")
+        print(f"| ARQUÉTIPO: {self.arquetipo}")
+        print(f"| VIDA: {self.vida}")
+        print(f"| FOR: {self.forca} | DES: {self.destreza} | MEN: {self.mente}")
+        print(f"| PONTOS DE NÉVOA (PN): {self.pontos_nevoa}/{MAX_PONTOS_NEVOA}")
+        self.verificar_punicao()
+        print("-" * 30)
+
+    def verificar_punicao(self):
+        """Verifica e exibe as punições da Névoa."""
+        if self.pontos_nevoa >= 15:
+            print("❗ INSTABILIDADE: Penalidade em todos os testes físicos e mentais.")
+        elif self.pontos_nevoa >= 10:
+            print("❗ CONFUSÃO: Penalidade em testes de Mente.")
+        elif self.pontos_nevoa >= 5:
+            print("❗ PARANÓIA: Penalidade em testes sociais.")
+
+class Monstro:
+    """Representa um inimigo (Monstro Corrompido)."""
+    def __init__(self, nome, vida, dano, dificuldade_base=15):
+        self.nome = nome
+        self.vida = vida
+        self.dano = dano
+        self.dificuldade_base = dificuldade_base
+
+# --- 3. SISTEMA DE REGRAS (Mecânicas) ---
+
+def rolar_d20(jogador, atributo):
+    """Rola um d20 e aplica o bônus do atributo (FOR, DES, ou MEN)."""
+    d20 = random.randint(1, 20)
+    
+    # Aplica o atributo
+    bonus = 0
+    if atributo == 'FOR':
+        bonus = jogador.forca
+    elif atributo == 'DES':
+        bonus = jogador.destreza
+    elif atributo == 'MEN':
+        bonus = jogador.mente
+
+    # Aplica punição da Névoa (simplificada)
+    penalidade_nevoa = 0
+    if jogador.pontos_nevoa >= 15:
+        penalidade_nevoa = -1
+    elif jogador.pontos_nevoa >= 10 and atributo == 'MEN':
+        penalidade_nevoa = -1
+
+    resultado_final = d20 + bonus + penalidade_nevoa
+
+    print(f"🎲 Rolagem de d20 ({atributo}): {d20} + {bonus} ({atributo}) + {penalidade_nevoa} (Névoa) = **{resultado_final}**")
+    return resultado_final
+
+def teste_atributo(jogador, atributo, cd):
+    """Executa um Teste de Atributo contra uma Dificuldade (CD)."""
+    resultado = rolar_d20(jogador, atributo)
+    if resultado >= cd:
+        print(f"✅ SUCESSO! O resultado ({resultado}) atinge ou excede a Dificuldade ({cd}).")
+        return True
+    else:
+        print(f"❌ FALHA! O resultado ({resultado}) é inferior à Dificuldade ({cd}).")
+        if atributo == 'MEN' and random.random() < 0.3: # Chance de ganhar Névoa na falha de Mente
+            jogador.pontos_nevoa += 1
+            print(">> A falha em Mente expõe você à Névoa! +1 PN.")
+        return False
+
+def combate_simples(jogador, inimigo):
+    """Simulação de um turno de combate simples."""
+    print(f"\n--- INÍCIO DO COMBATE CONTRA {inimigo.nome} ---")
+
+    while jogador.vida > 0 and inimigo.vida > 0:
+        time.sleep(1)
+        jogador.mostrar_status()
+        print(f"Oponente: {inimigo.nome} | Vida: {inimigo.vida}")
+        
+        # Turno do Jogador: Ataque com Força
+        print("\nSeu turno: Atacar!")
+        cd_ataque = inimigo.dificuldade_base
+        if teste_atributo(jogador, 'FOR', cd_ataque):
+            dano_causado = 5 + jogador.forca
+            inimigo.vida -= dano_causado
+            print(f"✨ Você atinge o {inimigo.nome} e causa {dano_causado} de dano!")
+        else:
+            print("O ataque falha! O inimigo se esquiva ou sua arma erra o alvo.")
+
+        if inimigo.vida <= 0:
+            print(f"\n🎉 VITÓRIA! Você derrota o {inimigo.nome}!")
+            break
+
+        time.sleep(1)
+        
+        # Turno do Inimigo: Contra-ataque
+        print(f"\nTurno do {inimigo.nome}: Ele contra-ataca!")
+        
+        # Tenta esquivar com Destreza
+        cd_esquiva = 10 + (jogador.destreza // 2) # Dificuldade de esquiva aumenta com sua Destreza
+        
+        if teste_atributo(jogador, 'DES', cd_esquiva):
+            print("💨 Você é ágil e consegue esquivar do golpe!")
+        else:
+            dano_recebido = inimigo.dano
+            jogador.vida -= dano_recebido
+            print(f"🤕 Você é atingido e recebe {dano_recebido} de dano.")
+
+        if jogador.vida <= 0:
+            print("\n💀 DERROTA! A Neblina reivindica mais um corpo. Fim do Jogo.")
+            break
+
+# --- 4. FLUXO DO JOGO ---
+
+def criar_personagem():
+    """Função para guiar a criação do personagem."""
+    print("## 👤 CRIAÇÃO DE PERSONAGEM ##")
+    nome = input("Qual o nome do seu aventureiro? ")
+    
+    arquetipos = ['Guerreiro', 'Patrulheiro', 'Sábio', 'Vagante']
+    print("Escolha seu Arquétipo:")
+    for i, arq in enumerate(arquetipos):
+        print(f"[{i+1}] {arq}")
+    
+    escolha = 0
+    while escolha not in [1, 2, 3, 4]:
+        try:
+            escolha = int(input("Digite o número do Arquétipo: "))
+            arquetipo = arquetipos[escolha - 1]
+        except (ValueError, IndexError):
+            escolha = 0
+            print("Escolha inválida. Tente novamente.")
+
+    # Distribuição de Atributos
+    pontos_restantes = PONTOS_DE_ATRIBUTO
+    print(f"\nVocê tem {pontos_restantes} pontos para distribuir em FOR, DES e MEN (Min 1, Max 5).")
+
+    forca = 0
+    destreza = 0
+    mente = 0
+
+    while pontos_restantes > 0:
+        print(f"Pontos restantes: {pontos_restantes}")
+        
+        try:
+            forca = min(5, int(input(f"Pontos em FORÇA (Min 1): ")))
+            destreza = min(5, int(input(f"Pontos em DESTREZA (Min 1): ")))
+            mente = min(5, int(input(f"Pontos em MENTE (Min 1): ")))
+            
+            soma = forca + destreza + mente
+            
+            if soma == PONTOS_DE_ATRIBUTO and forca >= 1 and destreza >= 1 and mente >= 1:
+                pontos_restantes = 0
+            else:
+                print(f"A soma dos pontos deve ser exatamente {PONTOS_DE_ATRIBUTO} (e no mínimo 1 em cada). Tente novamente.")
+        except ValueError:
+            print("Entrada inválida. Use apenas números.")
+
+    return Personagem(nome, arquetipo, forca, destreza, mente)
+
+def introducao_e_primeira_aventura(jogador):
+    """Executa a primeira cena do jogo."""
+    print("\n" * 5)
+    print("=" * 50)
+    print("Ecos da Antiga Neblina: O Vilarejo Esquecido")
+    print("=" * 50)
+    print(f"O bravo(a) {jogador.nome}, um(a) {jogador.arquetipo}, chega aos limites de Aethelgard.")
+    time.sleep(2)
+    print("Você está na orla da Floresta de Musgo, onde a 'Antiga Neblina' é mais densa.")
+    print("O ar é frio e pesado, e você ouve um lamento distante.")
+    time.sleep(2)
+
+    # CENÁRIO 1: O Teste de Investigação
+    print("\nVocê encontra uma cabana abandonada, parcialmente engolida pela névoa.")
+    escolha = input("[1] Entrar e investigar. [2] Contornar e seguir adiante. (Digite 1 ou 2): ")
+
+    if escolha == '1':
+        print("\nVocê entra na escuridão. O cheiro de mofo e corrupção é forte.")
+        print("Você tenta encontrar alguma pista sobre a origem da Neblina...")
+        cd_investigacao = 15
+        
+        if teste_atributo(jogador, 'MEN', cd_investigacao):
+            print("🔑 SUCESSO! Você encontra um diário antigo que menciona um 'Selo Quebrado' em uma ruína próxima.")
+            time.sleep(2)
+        else:
+            print("❌ FALHA! A névoa e o medo obscurecem seus pensamentos. Você não encontra nada de útil.")
+            time.sleep(2)
+
+    # CENÁRIO 2: O Combate
+    print("\nAo sair da cabana (ou seguir adiante), um animal corrompido pela Névoa salta na sua frente!")
+    monstro = Monstro("Cão da Névoa", vida=20, dano=8, dificuldade_base=13)
+    combate_simples(jogador, monstro)
+    time.sleep(2)
+    
+    if jogador.vida > 0:
+        print("\nO caminho agora está livre. Você avança, determinado a encontrar a ruína.")
+        print("Fim da demo. Seu aventureiro sobreviveu!")
+        jogador.mostrar_status()
+
+# --- 5. EXECUÇÃO PRINCIPAL ---
+
+def main():
+    jogador = criar_personagem()
+    introducao_e_primeira_aventura(jogador)
+
+if __name__ == "__main__":
+    main()
